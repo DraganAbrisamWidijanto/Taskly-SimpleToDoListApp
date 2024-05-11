@@ -53,11 +53,6 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _taskList() {
-    //add data to the box with this 3 code bellow!
-    // Task _newTask =
-    //     Task(content: "Go to GYM!", timestamp: DateTime.now(), done: false);
-    // _box?.add(_newTask.toMap());
-
     List tasks = _box!.values.toList();
     return ListView.builder(
       itemCount: tasks.length,
@@ -68,24 +63,26 @@ class _HomePageState extends State<HomePage> {
             task.content,
             style: TextStyle(
               decoration: task.done ? TextDecoration.lineThrough : null,
+              color: task.done ? Colors.grey : Colors.black,
             ),
           ),
           subtitle: Text(
             task.timestamp.toString(),
           ),
-          trailing: Icon(
-              task.done
-                  ? Icons.check_box_outlined
-                  : Icons.check_box_outline_blank_outlined,
-                  color: Colors.green,
-            ),
-          onTap: () {
-            task.done = !task.done;
-            _box!.putAt(_index, task.toMap());
-            setState(() {});
+          trailing: Checkbox(
+            value: task.done,
+            onChanged: (value) {
+              task.done = value!;
+              _box!.putAt(_index, task.toMap());
+              setState(() {});
+            },
+            activeColor: Colors.green,
+          ),
+          onTap: () async {
+            _showEditForm(context, task, _index);
           },
           onLongPress: () {
-            _box!.delete(_index);
+            _box!.deleteAt(_index);
             setState(() {});
           },
         );
@@ -103,31 +100,71 @@ class _HomePageState extends State<HomePage> {
 
   void _displayTaskPopUp() {
     showDialog(
-        context: context,
-        builder: (BuildContext _context) {
-          return AlertDialog(
-            title: const Text("Add New Task"),
-            content: TextField(
-              onSubmitted: (_value) {
-                if (_newTaskContent != null) {
-                  var _task = Task(
-                      content: _newTaskContent!,
-                      timestamp: DateTime.now(),
-                      done: false);
-                  _box?.add(_task.toMap());
-                  setState(() {
-                    _newTaskContent = null;
-                    Navigator.pop(_context);
-                  });
-                }
-              },
-              onChanged: (_value) {
+      context: context,
+      builder: (BuildContext _context) {
+        return AlertDialog(
+          title: const Text("Add New Task"),
+          content: TextField(
+            onSubmitted: (_value) {
+              if (_newTaskContent != null) {
+                var _task = Task(
+                    content: _newTaskContent!,
+                    timestamp: DateTime.now(),
+                    done: false);
+                _box?.add(_task.toMap());
                 setState(() {
-                  _newTaskContent = _value;
+                  _newTaskContent = null;
+                  Navigator.pop(_context);
                 });
+              }
+            },
+            onChanged: (_value) {
+              setState(() {
+                _newTaskContent = _value;
+              });
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  void _showEditForm(BuildContext context, Task task, int index) {
+    TextEditingController _controller =
+        TextEditingController(text: task.content);
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Edit Task'),
+          content: TextField(
+            controller: _controller,
+            decoration: InputDecoration(labelText: 'Enter new task content'),
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context)
+                    .pop(); // Tutup dialog tanpa menyimpan perubahan
               },
+              child: Text('Cancel'),
             ),
-          );
-        });
+            ElevatedButton(
+              onPressed: () {
+                String editedContent = _controller.text;
+                // Perbarui data tugas di penyimpanan lokal Hive
+                task.content = editedContent;
+                _box!.putAt(index, task.toMap());
+                setState(() {});
+                Navigator.of(context)
+                    .pop(); // Tutup dialog setelah menyimpan perubahan
+              },
+              child: Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
